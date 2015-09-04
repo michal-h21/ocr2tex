@@ -15,7 +15,7 @@ function M.hello(self)
 end
 
 function M.action(self, fun)
-  table.insert(self.actions(fun))
+  table.insert(self.actions,fun)
 end
 
 function M.load_text(self)
