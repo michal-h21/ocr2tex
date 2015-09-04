@@ -1,4 +1,53 @@
-#!/usr/bin/env bash
-SCRIPT=`realpath $0`
-SCRIPTPATH=`dirname $SCRIPT`
-w2l -config=$SCRIPTPATH/w2l-config/ocr2tex.xml $1
+#!/usr/bin/env texlua
+-- SCRIPT=`realpath $0`
+-- SCRIPTPATH=`dirname $SCRIPT`
+-- w2l -config=$SCRIPTPATH/w2l-config/ocr2tex.xml $1
+
+local config_file =  "w2l-config/ocr2tex.xml"
+
+local function file_exists(name)
+  local f=io.open(name,"r")
+  if f~=nil then io.close(f) return true else return false end
+end
+
+local function load_config(config_file)
+  local path = debug.getinfo(1,"S").source:gsub("^@","")
+  local realpath = path
+  local real = io.popen("realpath "..path) 
+  if real then
+    realpath = real:read("*all")
+    real:close()
+  end
+  -- remove script name
+  realpath = realpath:gsub("/[^%/]+$","/")
+  local filename = realpath .. config_file
+  if file_exists(filename) then
+    return filename
+  end
+  return false
+end
+
+local function convert(filename, config)
+  local tex_file = filename:gsub("odt$","tex")
+  local statuts = os.execute(string.format("w2l -c %s %s", config, filename))
+  return tex_file, file_exists(tex_file) 
+end
+
+local filename = arg[1]
+
+if not filename then
+  print [[
+  Usage: ocr2tex <filename.odt>
+  ]]
+end
+
+local cfg = load_config(config_file)
+local tex_file, tex_status = convert(filename, cfg)
+
+if not tex_status then 
+  print(string.format("Conversion of %s failed. Can't read %s", filename, tex_file))
+end
+-- for k,v  in pairs(lfs.attributes(path)) do
+--   print(k,v)
+-- end
+
