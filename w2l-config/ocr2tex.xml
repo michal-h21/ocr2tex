@@ -9,7 +9,7 @@
 
 <config>
   <option name="documentclass" value="article" />
-  <option name="backend" value="generic" />
+  <option name="backend" value="unspecified" />
   <option name="inputencoding" value="utf8" />
   <option name="multilingual" value="false" />
   <option name="use_ooomath" value="false" />
@@ -25,11 +25,13 @@
   <option name="formatting" value="ignore_all" />
   <option name="page_formatting" value="ignore_all" />
   <option name="ignore_empty_paragraphs" value="true" />
-  <option name="ignore_hard_page_breaks" value="true" />
+  <option name="ignore_hard_page_breaks" value="false" />
   <option name="ignore_hard_line_breaks" value="false" />
   <option name="ignore_double_spaces" value="true" />
   <option name="display_hidden_text" value="false" />
   <option name="debug" value="false" />
+  <option name="image_content" value="accept" />
+  <option name="save_images_in_subdir" value="true" />
   <heading-map max-level="5">
     <heading-level-map writer-level="1" name="section" level="1" />
     <heading-level-map writer-level="2" name="subsection" level="2" />
