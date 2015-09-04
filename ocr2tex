@@ -1,7 +1,5 @@
 #!/usr/bin/env texlua
--- SCRIPT=`realpath $0`
--- SCRIPTPATH=`dirname $SCRIPT`
--- w2l -config=$SCRIPTPATH/w2l-config/ocr2tex.xml $1
+
 
 local config_file =  "w2l-config/ocr2tex.xml"
 
@@ -22,14 +20,14 @@ local function load_config(config_file)
   realpath = realpath:gsub("/[^%/]+$","/")
   local filename = realpath .. config_file
   if file_exists(filename) then
-    return filename
+    return filename, realpath
   end
   return false
 end
 
 local function convert(filename, config)
   local tex_file = filename:gsub("odt$","tex")
-  local statuts = os.execute(string.format("w2l -c %s %s", config, filename))
+  local statuts = os.execute(string.format("w2l -config=%s %s", config, filename))
   return tex_file, file_exists(tex_file) 
 end
 
@@ -41,13 +39,54 @@ if not filename then
   ]]
 end
 
-local cfg = load_config(config_file)
+local cfg, path = load_config(config_file)
+if not cfg then 
+  print(string.format("Can't load configuration file %s", config_file))
+  os.exit()
+end
+
+-- we need to adjust package path to include our scritpt path
+package.path = package.path .. string.format(";%s?.lua", path)
+local cleaner = require "cleaner"
 local tex_file, tex_status = convert(filename, cfg)
 
+local Make = cleaner(tex_file)
+Make:hello()
 if not tex_status then 
   print(string.format("Conversion of %s failed. Can't read %s", filename, tex_file))
+  os.exit()
 end
--- for k,v  in pairs(lfs.attributes(path)) do
---   print(k,v)
--- end
+
+local Make = cleaner(tex_file)
+
+Make:action(function(s)
+  return s:gsub("([%-]?)\\newline\n([%s]*[^%s]+)", function(x, c)
+    c = c .. "\n"
+    if x == "-" then return c  else return " " .. c end
+  end)
+end)
+
+local replaces = {textquotedbl = "“"}
+
+-- find style declarations and save them to the replace table 
+Make:action(function(s) 
+  return s:gsub("\\newcommand\\([%a]+)%[.%](%b{})", function(a,b)
+    local textit = b:match "textit" and "\\textit"
+    local textbf = b:match "textbf" and "\\textbf"
+    local style = textbf or texit
+    style = (textit and textbf) and "\\textbfit" or style
+    style = style or ""
+    replaces[a] = style
+    print(a,style)
+    return ""
+  end)
+end)
+Make:action(function(s)
+  return s:gsub("\\([%a]+)", function(x)
+    return replaces[x] or "\\"..x
+  end)
+end)
+    
+
+Make:run()
 
