@@ -59,6 +59,14 @@ end
 
 local Make = cleaner(tex_file)
 
+local action = function(pattern)
+  return function(fn)
+    Make:action(function(s)
+      return s:gsub(pattern,fn)
+    end)
+  end
+end
+
 Make:action(function(s)
   return s:gsub("([%-]?)\\newline\n([%s]*[^%s]+)", function(x, c)
     c = c .. "\n"
@@ -69,8 +77,9 @@ end)
 local replaces = {textquotedbl = "“"}
 
 -- find style declarations and save them to the replace table 
-Make:action(function(s) 
-  return s:gsub("\\newcommand\\([%a]+)%[.%](%b{})", function(a,b)
+-- Make:action(function(s) 
+  -- return s:gsub("\\newcommand\\([%a]+)%[.%](%b{})", function(a,b)
+action "\\newcommand\\([%a]+)%[.%](%b{})\n" (function(a,b)
     local textit = b:match "textit" and "\\textit"
     local textbf = b:match "textbf" and "\\textbf"
     local style = textbf or texit
@@ -80,7 +89,24 @@ Make:action(function(s)
     print(a,style)
     return ""
   end)
+
+-- handle page breaks
+-- sometimes page number is missing
+local page = 0
+action "\\clearpage[setcounterpage\\%{%}]*([0-9]*)" (function(count)
+  page = tonumber(count) or page + 1
+  print("page", page)
+  return string.format("\\pagebreak{%d}", page)
 end)
+
+
+-- remove minipages
+
+action "\\begin{minipage}.-\n" (function() return "" end)
+action "\\end{minipage}.-\n" (function() return "" end)
+
+
+-- end)
 Make:action(function(s)
   return s:gsub("\\([%a]+)", function(x)
     return replaces[x] or "\\"..x
