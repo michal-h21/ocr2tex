@@ -1,0 +1,127 @@
+#!/usr/bin/env texlua
+
+
+local tex_file = arg[1]
+
+if not tex_file then
+  print [[
+Usage: cleanocrtex <filename>
+]]
+  os.exit()
+end
+
+local function get_path()
+  local path = debug.getinfo(1,"S").source:gsub("^@","")
+  local realpath = path
+  local real = io.popen("realpath "..path) 
+  if real then
+    realpath = real:read("*all")
+    real:close()
+  end
+  -- remove script name
+  return realpath:gsub("/[^%/]+$","/")
+end
+
+local path = get_path()
+package.path = package.path .. string.format(";%s?.lua", path)
+local cleaner = require "cleaner"
+
+local Make = cleaner(tex_file)
+
+local action = function(pattern)
+  return function(fn)
+    Make:action(function(s)
+      return s:gsub(pattern,fn)
+    end)
+  end
+end
+
+Make:action(function(s)
+  return s:gsub("([%-]?)\\newline\n([%s]*[^%s]+)", function(x, c)
+    c = c .. "\n"
+    if x == "-" then return c  else return " " .. c end
+  end)
+end)
+
+
+-- find style declarations and save them to the replace table 
+--
+local cleaner = require "cleaner"
+
+local Make = cleaner(tex_file)
+
+local action = function(pattern)
+  return function(fn)
+    Make:action(function(s)
+      return s:gsub(pattern,fn)
+    end)
+  end
+end
+
+Make:action(function(s)
+  return s:gsub("([%-]?)\\newline\n([%s]*[^%s]+)", function(x, c)
+    c = c .. "\n"
+    if x == "-" then return c  else return " " .. c end
+  end)
+end)
+
+local replaces = {textquotedbl = "“"}
+local ignore = { textbfit = "true", breakpage = true}
+
+-- find style declarations and save them to the replace table 
+-- Make:action(function(s) 
+  -- return s:gsub("\\newcommand\\([%a]+)%[.%](%b{})", function(a,b)
+action "\\newcommand\\([%a]+)%[.%](%b{})\n" (function(a,b)
+    if not ignore[a] then
+      local textit = b:match "textit" and "\\textit"
+      local textbf = b:match "textbf" and "\\textbf"
+      local style = textbf or texit
+      style = (textit and textbf) and "\\textbfit" or style
+      style = style or ""
+      replaces[a] = style
+      print(a,style)
+    end
+    return ""
+  end)
+
+-- handle page breaks
+-- sometimes page number is missing
+local page = 0
+action "\\clearpage[setcounterpage\\%{%}]*([0-9]*)%}" (function(count)
+  page = tonumber(count) or page + 1
+  print("page", page)
+  return string.format("\\breakpage{%d}", page)
+end)
+
+
+-- remove minipages
+
+action "\\begin{minipage}.-\n" (function() return "" end)
+action "\\end{minipage}.-\n" (function() return "" end)
+
+-- insert custom definitions
+--
+action "\\begin{document}" (function()
+  return [[
+\newcommand\breakpage[1]{//\marginpar{#1}}
+\newcommand\textbfit[1]{\textbf{\textit{#1}}}
+\begin{document}
+]]
+end)
+-- end)
+--
+--
+-- replace w2l inserted macros with default tex macros
+Make:action(function(s)
+  return s:gsub("\\([%a]+)", function(x)
+    return replaces[x] or "\\"..x
+  end)
+end)
+    
+-- remove superscripts at word start
+action " \\textsuperscript{([^%}]+)}" (function(a)
+  print("superscript at start",a)
+  return a
+end)
+Make:run()
+
