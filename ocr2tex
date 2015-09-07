@@ -50,8 +50,6 @@ package.path = package.path .. string.format(";%s?.lua", path)
 local cleaner = require "cleaner"
 local tex_file, tex_status = convert(filename, cfg)
 
-local Make = cleaner(tex_file)
-Make:hello()
 if not tex_status then 
   print(string.format("Conversion of %s failed. Can't read %s", filename, tex_file))
   os.exit()
